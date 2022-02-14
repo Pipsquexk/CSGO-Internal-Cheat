@@ -20,10 +20,10 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Interfaces.hpp">
+    <ClInclude Include="Headers\Interfaces.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Offsets.hpp">
+    <ClInclude Include="Headers\Offsets.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
