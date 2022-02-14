@@ -1,25 +1,11 @@
 #define WIN32_LEAN_AND_MEAN
+
+#include <thread>
+#include <cstdint>
 #include <Windows.h>
 
-#include <cstdint>
-#include <thread>
-
-namespace offsets
-{
-    //client
-    constexpr std::ptrdiff_t dwLocalPlayer = 0xDB35EC;
-    constexpr std::ptrdiff_t dwForceJump = 0x52789F8;
-    constexpr std::ptrdiff_t dwGlowObjectManager = 0x5316E98;
-    constexpr std::ptrdiff_t dwEntityList = 0x4DCEB7C;
-
-    //player
-    constexpr std::ptrdiff_t m_iHealth = 0x100;
-    constexpr std::ptrdiff_t m_fFlags = 0x104;
-    constexpr std::ptrdiff_t m_iTeamNum = 0xF4;
-    constexpr std::ptrdiff_t m_iGlowIndex = 0x10488;
-
-}
-
+#include "Offsets.hpp"
+#include "Interfaces.hpp"
 
 struct Color
 {
@@ -36,19 +22,21 @@ void MainThread(const HMODULE instance) noexcept
 
     const auto client = reinterpret_cast<std::uintptr_t>(GetModuleHandle("client.dll"));
 
+    const auto entityList = GetInterface<IClientEntityList>("VClientEntityList003", "client.dll");
+
     while (!GetAsyncKeyState(VK_END))
     {
-        const auto pLocalPlayer = *reinterpret_cast<std::uintptr_t*>(client + offsets::dwLocalPlayer);
+        const auto pLocalPlayer = reinterpret_cast<ClientEntity*>(client + offsets::dwLocalPlayer);
 
         if (!pLocalPlayer) continue;
 
         if (GetAsyncKeyState(VK_SPACE))
         {
-            const auto health = *reinterpret_cast<std::int32_t*>(pLocalPlayer + offsets::m_iHealth);
+            const auto health = pLocalPlayer->GetHealth();
 
             if (!health) continue;
 
-            const auto flags = *reinterpret_cast<std::int32_t*>(pLocalPlayer + offsets::m_fFlags);
+            const auto flags = pLocalPlayer->GetFlags();
 
             *reinterpret_cast<std::uintptr_t*>(client + offsets::dwForceJump) = ((flags & (1 << 0)) ? 6 : 4);
         }
@@ -58,16 +46,16 @@ void MainThread(const HMODULE instance) noexcept
 
         for (int i = 0; i < 64; ++i)
         {
-            const auto entity = *reinterpret_cast<std::uintptr_t*>(client + offsets::dwEntityList + i * 0x10);
+            const auto entity = entityList->GetClientEntity(i);
 
             if (!entity) continue;
 
-            const auto glowIndex = *reinterpret_cast<std::uintptr_t*>(entity + offsets::m_iGlowIndex);
+            const auto glowIndex = entity->GetGlowIndex();
 
             *reinterpret_cast<bool*>(glowObjectManager + (glowIndex * 0x38) + 0x27) = true;
             *reinterpret_cast<bool*>(glowObjectManager + (glowIndex * 0x38) + 0x28) = true;
 
-            if (*reinterpret_cast<std::uintptr_t*>(entity + offsets::m_iTeamNum) != *reinterpret_cast<std::uintptr_t*>(pLocalPlayer + offsets::m_iTeamNum))
+            if (entity->GetTeamNum() != pLocalPlayer->GetTeamNum())
             {
                 *reinterpret_cast<Color*>(glowObjectManager + (glowIndex * 0x38) + 0x8) = red;
             }
